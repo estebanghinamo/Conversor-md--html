@@ -26,4 +26,7 @@ Opción 2. El lexer emite un token por línea (`BLANK`, `HEADING`, `HORIZONTAL_R
 - El parser asume el inline (énfasis, código, links, imágenes) y la agrupación de líneas en párrafos, listas y citas.
 - `LIST_START` y `LIST_END` tampoco existen: el parser agrupa los `LIST_ITEM` consecutivos.
 - `Token.language` es el info string sin validar; el sanitizer debe escaparlo o restringirlo antes de usarlo en HTML.
+- El parser agrupa las líneas `BLOCKQUOTE`, quita el marcador y vuelve a llamar a `tokenize` sobre ese contenido. Cada nivel mantiene viva su lista de tokens, por eso `MAX_NESTING_DEPTH` es 8: acota el pico de memoria a unas 9 listas de tokens y la recursión a un número constante.
+- El inline vive en `inline.py`, dentro de la etapa del parser (`parse_inline`). Soporta `*`/`**`, `~~`, código inline, links, imágenes y escapes con `\`; `_` queda como texto. Los delimitadores y corchetes se resuelven con una pila (sin regex anidadas ni recursión) y hay topes: `MAX_INLINE_DEPTH`, `MAX_DELIMITER_RUNS`, `MAX_OPEN_BRACKETS` y `MAX_URL_LENGTH`. Lo que excede un tope se deja como texto literal.
+- Las URLs de links e imágenes llegan crudas al AST; el sanitizer las valida.
 - Los tokens `EMPHASIS`, `STRONG`, `CODE`, `LINK`, `IMAGE` de §6.2 no existen en el lexer.
