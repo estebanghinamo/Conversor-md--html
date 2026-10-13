@@ -1,4 +1,5 @@
 import dataclasses
+from typing import cast
 
 import pytest
 
@@ -95,8 +96,8 @@ def test_heading_is_immutable_after_validation() -> None:
 
 
 def test_different_node_types_with_same_data_are_not_equal() -> None:
-    assert Text("a") != InlineCode("a")
-    assert Emphasis((Text("a"),)) != Strong((Text("a"),))
+    assert cast(object, Text("a")) != InlineCode("a")
+    assert cast(object, Emphasis((Text("a"),))) != Strong((Text("a"),))
 
 
 def test_deeply_nested_blockquotes() -> None:
@@ -104,3 +105,10 @@ def test_deeply_nested_blockquotes() -> None:
     for _ in range(50):
         node = BlockQuote((node,))
     assert isinstance(node.children[0], BlockQuote)
+
+
+@pytest.mark.parametrize("level", [True, 1.0, "1"])
+def test_heading_rejects_non_int_levels(level: object) -> None:
+    invalid_level = cast(int, level)
+    with pytest.raises(ValueError, match="fuera de rango"):
+        Heading(invalid_level, ())
