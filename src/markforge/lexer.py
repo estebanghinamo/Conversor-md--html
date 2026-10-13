@@ -102,7 +102,8 @@ def _open_fence(line: str) -> _Fence | None:
     info = body[length:].strip(_WHITESPACE)
     if "`" in info:
         return None
-    return _Fence(length, info.split()[0] if info else None)
+    # Solo espacio y tab separan palabras (`str.split()` también corta en controles).
+    return _Fence(length, info.replace("\t", " ").split(" ", 1)[0] if info else None)
 
 
 def _closes_fence(line: str, length: int) -> bool:

@@ -56,3 +56,8 @@ def test_convert_accepts_exact_limit_on_short_lines() -> None:
     line = "a" * 99 + "\n"
     text = (line * (MAX_INPUT_LENGTH // len(line) + 1))[:MAX_INPUT_LENGTH]
     assert convert(text).startswith("<p>")
+
+
+def test_convert_fence_with_control_character_in_info_string() -> None:
+    result = convert("```" + chr(31) + "\ncode\n```")
+    assert result == "<pre><code>code\n</code></pre>\n"
