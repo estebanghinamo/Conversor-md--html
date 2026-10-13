@@ -62,7 +62,7 @@ class Heading:
     children: tuple[Inline, ...]
 
     def __post_init__(self) -> None:
-        if not MIN_HEADING_LEVEL <= self.level <= MAX_HEADING_LEVEL:
+        if type(self.level) is not int or not MIN_HEADING_LEVEL <= self.level <= MAX_HEADING_LEVEL:
             msg = f"nivel de heading fuera de rango: {self.level}"
             raise ValueError(msg)
 
