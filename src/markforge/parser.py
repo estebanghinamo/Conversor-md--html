@@ -13,13 +13,12 @@ from markforge.ast import (
     Document,
     Heading,
     HorizontalRule,
-    Inline,
     List,
     ListItem,
     Paragraph,
-    Text,
 )
 from markforge.errors import ParserError
+from markforge.inline import parse_inline
 from markforge.lexer import Token, TokenType, tokenize
 
 MAX_NESTING_DEPTH = 8
@@ -46,7 +45,7 @@ def _parse_block(tokens: Sequence[Token], index: int, depth: int) -> tuple[Block
     token = tokens[index]
     match token.type:
         case TokenType.HEADING:
-            return Heading(token.level, _parse_inline(token.value)), index + 1
+            return Heading(token.level, parse_inline(token.value)), index + 1
         case TokenType.HORIZONTAL_RULE:
             return HorizontalRule(), index + 1
         case TokenType.CODE_BLOCK:
@@ -64,7 +63,7 @@ def _parse_paragraph(tokens: Sequence[Token], start: int) -> tuple[Paragraph, in
     while end < len(tokens) and tokens[end].type is TokenType.TEXT:
         end += 1
     text = "\n".join(token.value for token in tokens[start:end])
-    return Paragraph(_parse_inline(text)), end
+    return Paragraph(parse_inline(text)), end
 
 
 def _parse_blockquote(tokens: Sequence[Token], start: int, depth: int) -> tuple[BlockQuote, int]:
@@ -101,9 +100,5 @@ def _skip_blanks(tokens: Sequence[Token], index: int) -> int:
 
 
 def _parse_list_item(token: Token) -> ListItem:
-    inline = _parse_inline(token.value)
+    inline = parse_inline(token.value)
     return ListItem((Paragraph(inline),) if inline else ())
-
-
-def _parse_inline(text: str) -> tuple[Inline, ...]:
-    return (Text(text),) if text else ()

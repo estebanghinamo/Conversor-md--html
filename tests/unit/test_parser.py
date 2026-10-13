@@ -9,6 +9,7 @@ from markforge.ast import (
     List,
     ListItem,
     Paragraph,
+    Strong,
     Text,
 )
 from markforge.errors import ParserError
@@ -140,8 +141,11 @@ def test_deep_nesting_does_not_hit_recursion_limit() -> None:
         doc(">" * 50_000)
 
 
-def test_inline_markup_is_not_interpreted_yet() -> None:
-    assert doc("**a**").children == (para("**a**"),)
+def test_inline_markup_is_parsed_in_blocks() -> None:
+    strong = Paragraph((Strong((Text("a"),)),))
+    assert doc("**a**").children == (strong,)
+    assert doc("# **a**").children == (Heading(1, (Strong((Text("a"),)),)),)
+    assert doc("- **a**").children == (List(False, (ListItem((strong,)),)),)
 
 
 def test_parse_accepts_any_token_sequence() -> None:
