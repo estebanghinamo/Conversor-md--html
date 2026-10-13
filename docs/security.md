@@ -21,8 +21,16 @@ Si una vez se supera `MAX_INLINE_DEPTH`, el resto del texto deja de formatearse 
 
 Los límites de línea y de tamaño se vuelven a aplicar al contenido de cada cita anidada, por eso el peor caso de memoria es de unas 9 listas de tokens (ver ADR-001).
 
-## Pendiente para el sanitizer
-- Las URLs de links e imágenes llegan **crudas** al AST: validar esquema (bloquear `javascript:`, `data:`, `vbscript:`) y escapar.
-- `CodeBlock.language` es el primer fragmento tras los backticks, sin validar: escaparlo o restringirlo (por ejemplo a `[A-Za-z0-9_+-]{1,32}`) antes de usarlo en `class="language-…"`.
-- El texto de `Text`, `InlineCode`, `CodeBlock` y `Image.alt` también llega crudo: escapar HTML.
-- Los recorridos recursivos del AST pueden asumir una profundidad máxima razonable (citas × nodos inline).
+## Sanitizer (política, ver ADR-003)
+- **URLs de links e imágenes:** lista blanca de esquemas `http`, `https` y `mailto`, más URLs relativas. Se rechazan vacías, de más de 2.048 caracteres o con espacios, barras invertidas, caracteres de control o de formato. Las URLs relativas al protocolo (`//host`) se permiten: pueden enlazar o cargar recursos externos, igual que cualquier `http(s)`. Un link bloqueado queda como su contenido; una imagen bloqueada, como su `alt`.
+- **`CodeBlock.language`:** solo `[A-Za-z0-9_+-]{1,32}`; si no, se descarta.
+- **Texto:** se eliminan los caracteres de control (salvo salto de línea y tab). Se eliminan también los overrides y aislamientos bidi (U+202A–202E, U+2066–2069) para evitar spoofing visual; otros caracteres de formato, como el espacio de ancho cero, se conservan en el texto.
+- **Nodos desconocidos y AST de más de 64 niveles:** `SanitizationError`.
+
+## Contrato con el renderer (pendiente de implementar)
+El sanitizer **no escapa HTML**. El renderer debe, una sola vez al imprimir:
+- escapar `& < > " '` en todo texto, `InlineCode`, `CodeBlock`, `alt` y en los valores de `href` y `src`;
+- emitir `language` solo como nombre de clase;
+- tolerar contenedores sin hijos (por ejemplo, énfasis vacío tras quitar un link bloqueado).
+
+Entradas como `javascript&colon;x` pasan el sanitizer porque no tienen esquema: solo son inofensivas si el renderer escapa el `&`.
