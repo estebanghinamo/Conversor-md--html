@@ -26,4 +26,5 @@ Opción 2. El lexer emite un token por línea (`BLANK`, `HEADING`, `HORIZONTAL_R
 - El parser asume el inline (énfasis, código, links, imágenes) y la agrupación de líneas en párrafos, listas y citas.
 - `LIST_START` y `LIST_END` tampoco existen: el parser agrupa los `LIST_ITEM` consecutivos.
 - `Token.language` es el info string sin validar; el sanitizer debe escaparlo o restringirlo antes de usarlo en HTML.
+- El parser agrupa las líneas `BLOCKQUOTE`, quita el marcador y vuelve a llamar a `tokenize` sobre ese contenido. Cada nivel mantiene viva su lista de tokens, por eso `MAX_NESTING_DEPTH` es 8: acota el pico de memoria a unas 9 listas de tokens y la recursión a un número constante.
 - Los tokens `EMPHASIS`, `STRONG`, `CODE`, `LINK`, `IMAGE` de §6.2 no existen en el lexer.
