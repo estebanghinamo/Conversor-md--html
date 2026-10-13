@@ -34,3 +34,11 @@ El sanitizer **no escapa HTML**. El renderer debe, una sola vez al imprimir:
 - tolerar contenedores sin hijos (por ejemplo, énfasis vacío tras quitar un link bloqueado).
 
 Entradas como `javascript&colon;x` pasan el sanitizer porque no tienen esquema: solo son inofensivas si el renderer escapa el `&`.
+
+## CLI
+
+- **Lectura acotada:** se leen como máximo `MAX_INPUT_BYTES` (4 bytes por carácter del límite del lexer) antes de decodificar. Si hay más, sale con código 1 sin cargar el resto en memoria.
+- **Codificación:** UTF-8 estricto (se ignora un BOM inicial); si es inválido, código 1.
+- **Salida:** solo se escribe si la conversión terminó bien, así que un error no toca el archivo de salida. Se sobrescribe en el lugar (no es atómico) y se rechaza que sea el mismo archivo que la entrada, incluso mediante symlinks o hard links.
+- **Mensajes de error:** solo incluyen la ruta que pasó el usuario y el motivo del sistema (o el límite superado); nunca el contenido del input ni trazas.
+- **Códigos de salida:** 0 éxito, 1 input inválido, 2 error de E/S o de uso.
