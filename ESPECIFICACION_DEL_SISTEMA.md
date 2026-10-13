@@ -371,7 +371,7 @@ Responsabilidad crítica de seguridad.
 
 Debe:
 
-- escapar HTML;
+- garantizar que el HTML quede escapado (la validación y la normalización las hace el sanitizer; el escape al imprimir lo hace el renderer, una sola vez, ver ADR-003);
 - validar URLs;
 - bloquear protocolos peligrosos;
 - prevenir HTML injection;
@@ -395,9 +395,10 @@ El sanitizer debe ser una etapa explícita del pipeline.
 Responsabilidad:
 
 - convertir el AST sanitizado en HTML;
+- escapar todo texto y todo valor de atributo al imprimir (`& < > " '`), una sola vez;
 - no interpretar Markdown;
 - no realizar parsing;
-- no tomar decisiones de seguridad que correspondan al sanitizer.
+- no tomar decisiones de seguridad que correspondan al sanitizer (qué URLs, esquemas y lenguajes son válidos).
 
 ---
 
