@@ -236,3 +236,16 @@ def test_only_space_and_tab_count_as_whitespace() -> None:
     nbsp = chr(0xA0)
     assert one(nbsp).type is TokenType.TEXT
     assert one("#" + nbsp + "x").type is TokenType.TEXT
+
+
+@pytest.mark.parametrize("code", [0x1C, 0x1F, 0x85, 0xA0, 0x2028])
+def test_fence_info_made_of_unicode_whitespace_does_not_crash(code: int) -> None:
+    char = chr(code)
+    token = one("```" + char + "\nx\n```")
+    assert (token.type, token.value) == (TokenType.CODE_BLOCK, "x")
+    assert token.language == char
+
+
+def test_fence_language_is_the_first_word_split_by_space_or_tab() -> None:
+    assert one("```py" + chr(9) + "title\nx\n```").language == "py"
+    assert one("```py  title\nx\n```").language == "py"
