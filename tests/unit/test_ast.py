@@ -66,13 +66,16 @@ def test_nodes_are_immutable() -> None:
 
 
 def test_nodes_compare_by_value() -> None:
-    assert Paragraph((Text("a"),)) == Paragraph((Text("a"),))
-    assert Paragraph((Text("a"),)) != Paragraph((Text("b"),))
+    first = Paragraph((Text("a"),))
+    second = Paragraph((Text("a"),))
+    assert first == second
+    assert first != Paragraph((Text("b"),))
 
 
 def test_empty_document_and_horizontal_rule() -> None:
     assert Document(()).children == ()
-    assert HorizontalRule() == HorizontalRule()
+    rule = HorizontalRule()
+    assert rule == HorizontalRule()
 
 
 def test_nodes_are_hashable_and_usable_in_sets() -> None:
