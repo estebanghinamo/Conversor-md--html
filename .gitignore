@@ -1,0 +1,43 @@
+# ENV / SECRETS
+.env
+.env.*
+!.env.example
+
+# PYTHON
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# TOOLS CACHE / REPORTS
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.mutmut-cache
+mutants/
+.coverage
+coverage.xml
+htmlcov/
+.benchmarks/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# ARQUITECTURA DE IA (privada, solo local)
+.claude/
+CLAUDE.md
+COMMANDS.md
+ARCHITECTURE_DECISIONS.md
+TASK_CONTRACT_TEMPLATE.json
+FINALIZATION_PROTOCOL.md
+ERROR_LOG.md
+PRODUCTION_CHECKLIST.md
+CalidadYSeguridad.md
+PROJECT_STATE.json
+extras/
