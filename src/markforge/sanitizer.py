@@ -39,7 +39,12 @@ MAX_LANGUAGE_LENGTH = 32
 
 ALLOWED_SCHEMES = frozenset({"http", "https", "mailto"})
 
-_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f‪-‮⁦-⁩]")
+# Rangos de control C0/C1 y overrides/aislamientos bidi; se arma con chr() para no
+# dejar caracteres bidi literales en el código fuente.
+_CONTROL_RANGES = ((0x00, 0x08), (0x0B, 0x1F), (0x7F, 0x9F), (0x202A, 0x202E), (0x2066, 0x2069))
+_CONTROL_CHARS = re.compile(
+    "[" + "".join(f"{re.escape(chr(lo))}-{re.escape(chr(hi))}" for lo, hi in _CONTROL_RANGES) + "]"
+)
 _LANGUAGE_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_+-")
 _PATH_DELIMITERS = "/?#"
 

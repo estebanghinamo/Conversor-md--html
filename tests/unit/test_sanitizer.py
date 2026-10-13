@@ -108,7 +108,7 @@ def test_url_at_length_limit_is_safe() -> None:
 
 
 def test_allowed_schemes_are_a_whitelist() -> None:
-    assert {"http", "https", "mailto"} == ALLOWED_SCHEMES
+    assert sorted(ALLOWED_SCHEMES) == ["http", "https", "mailto"]
 
 
 def test_safe_link_is_kept() -> None:
@@ -257,8 +257,9 @@ def test_inline_nesting_over_limit_raises() -> None:
     node: Inline = t("x")
     for _ in range(MAX_AST_DEPTH + 1):
         node = Emphasis((node,))
+    block = para(node)
     with pytest.raises(SanitizationError, match="profundidad"):
-        clean(para(node))
+        clean(block)
 
 
 def test_very_deep_ast_raises_instead_of_recursion_error() -> None:
@@ -279,14 +280,16 @@ def test_list_item_depth_is_checked() -> None:
 
 @pytest.mark.parametrize("fake", [object(), "texto", 42, None])
 def test_unknown_block_is_rejected(fake: object) -> None:
+    block = cast(Block, fake)
     with pytest.raises(SanitizationError, match="nodo desconocido"):
-        clean(cast(Block, fake))
+        clean(block)
 
 
 @pytest.mark.parametrize("fake", [object(), "texto", None])
 def test_unknown_inline_is_rejected(fake: object) -> None:
+    block = para(cast(Inline, fake))
     with pytest.raises(SanitizationError, match="nodo desconocido"):
-        clean(para(cast(Inline, fake)))
+        clean(block)
 
 
 def test_unknown_list_item_is_rejected() -> None:
