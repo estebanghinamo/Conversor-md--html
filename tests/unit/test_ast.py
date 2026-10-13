@@ -109,5 +109,6 @@ def test_deeply_nested_blockquotes() -> None:
 
 @pytest.mark.parametrize("level", [True, 1.0, "1"])
 def test_heading_rejects_non_int_levels(level: object) -> None:
+    invalid_level = cast(int, level)
     with pytest.raises(ValueError, match="fuera de rango"):
-        Heading(cast(int, level), ())
+        Heading(invalid_level, ())
