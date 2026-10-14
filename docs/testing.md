@@ -13,6 +13,8 @@ La cobertura mínima es 90 % (líneas y ramas); hoy es 100 %. Comandos reales en
 
 ## Golden tests
 
+Los fixtures se guardan con finales de línea LF (`.gitattributes`): la comparación es byte a byte y, en Windows con `core.autocrlf=true`, un checkout con CRLF rompería todos los golden.
+
 Cada `tests/fixtures/markdown/x.md` se convierte con `convert()` y se compara con `tests/fixtures/expected_html/x.html`. Para agregar un caso se crean los dos archivos y se revisa a mano el HTML esperado antes de fijarlo.
 
 ## Tests de propiedades (Hypothesis)
@@ -33,6 +35,15 @@ Perfiles de Hypothesis (en `tests/conftest.py`):
 | `deep` | 5.000 | búsqueda profunda antes de un release: `pytest tests/property --hypothesis-profile=deep` |
 
 Hypothesis guarda en `.hypothesis/` (ignorado por git) los contraejemplos que encontró y los vuelve a probar. Un fallo se corrige arreglando el código y agregando un test unitario con el caso mínimo.
+
+## Propiedades de fortaleza
+
+Además de las propiedades generales, hay propiedades pensadas para matar mutaciones concretas (comprobadas rompiendo el código a propósito):
+
+- **Round-trip del renderer** contra un parser HTML: atributos y texto de links, imágenes, código inline y bloques de código vuelven idénticos aunque el contenido sea agresivo (`<script>`, comillas, `&amp;`, bidi, NUL).
+- **Sanitizer sobre ASTs arbitrarios**, sin pasar por los límites del parser: quita exactamente los caracteres prohibidos, conserva un link o imagen si y solo si la URL es segura y valida el lenguaje de los bloques de código.
+- **Límites exactos** (justo debajo y justo en el tope) del lexer, el parser, el inline y el sanitizer.
+- Un oráculo de URLs (`url_is_safe`) escrito aparte del código de producción, para que el test no dependa de lo que verifica.
 
 ## Verificar que los tests detectan fallos
 
