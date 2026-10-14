@@ -13,6 +13,7 @@ markforge = "markforge.cli:main"
 [dependency-groups]
 dev = [
     "hypothesis>=6.169.0",
+    "mutmut>=3.8.0",
     "mypy>=1.10",
     "pip-audit>=2.10.1",
     "pre-commit>=3.7",
@@ -48,6 +49,13 @@ packages = ["markforge"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers"
+
+[tool.mutmut]
+# No corre en Windows: se ejecuta en .github/workflows/mutation.yml (ubuntu) o en WSL/Docker.
+source_paths = ["src/markforge/"]
+pytest_add_cli_args_test_selection = ["tests/unit", "tests/integration", "tests/property"]
+pytest_add_cli_args = ["-p", "no:cacheprovider"]
+also_copy = ["tests/fixtures"]
 
 [tool.coverage.run]
 branch = true

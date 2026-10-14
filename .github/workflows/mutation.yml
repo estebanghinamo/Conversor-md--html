@@ -1,0 +1,57 @@
+name: Mutation testing
+
+# Workflow aparte: es costoso y mutmut no corre en Windows, por eso no va en ci.yml.
+on:
+  # Pendiente: descomentar pull_request y push para correrlo en cada PR/merge (tarda >10 min).
+  # Hoy solo corre cada semana o a mano desde Actions (Run workflow).
+  # pull_request:
+  #   paths: ["src/**", "tests/**", "pyproject.toml", "uv.lock", ".github/workflows/mutation.yml"]
+  # push:
+  #   branches: [main]
+  #   paths: ["src/**", "tests/**", "pyproject.toml", "uv.lock"]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  MIN_SCORE: "80"
+
+jobs:
+  mutmut:
+    name: mutmut (score >= 80%)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: mutmut run
+        # mutmut sale con codigo != 0 si sobreviven mutantes; el umbral se evalua abajo.
+        run: uv run mutmut run || true
+      - name: Export stats
+        run: uv run mutmut export-cicd-stats
+      - name: Check score
+        run: |
+          uv run python - <<'PY'
+          import json, os, sys
+          s = json.load(open("mutants/mutmut-cicd-stats.json"))
+          tested = s["total"] - s["skipped"]
+          score = 0.0 if tested <= 0 else (s["killed"] + s["timeout"]) / tested * 100
+          minimum = float(os.environ["MIN_SCORE"])
+          print(f"Mutation score: {score:.1f}% (minimo {minimum:.0f}%) - {s}")
+          sys.exit(0 if score >= minimum else 1)
+          PY
+      - name: Survivors
+        if: always()
+        run: uv run mutmut results > mutants/survivors.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutmut-results
+          path: |
+            mutants/mutmut-cicd-stats.json
+            mutants/survivors.txt
