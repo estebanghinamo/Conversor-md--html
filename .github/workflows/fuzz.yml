@@ -1,0 +1,41 @@
+name: Fuzzing
+
+# Workflow aparte: Atheris no corre en Windows y el fuzzing es costoso, por eso no va en ci.yml.
+# Solo corre cada semana o a mano desde Actions (Run workflow).
+on:
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: "Duracion del fuzzing en segundos"
+        default: "300"
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz-lexer:
+    name: Atheris (lexer)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FUZZ_SECONDS: ${{ inputs.seconds || '300' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: uv sync --locked --group fuzz
+      - name: Fuzz lexer
+        # Atheris termina con codigo != 0 si encuentra un fallo (queda en crash-*).
+        run: |
+          mkdir -p corpus
+          uv run python tests/fuzz/fuzz_lexer.py corpus -max_total_time="$FUZZ_SECONDS" -max_len=4096 -timeout=10 -rss_limit_mb=2048
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzz-lexer-results
+          path: |
+            crash-*
+            corpus/
+          if-no-files-found: ignore

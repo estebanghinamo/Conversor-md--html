@@ -21,6 +21,9 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.5",
 ]
+fuzz = [
+    "atheris>=3.1.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -45,6 +48,10 @@ strict = true
 python_version = "3.12"
 mypy_path = "src"
 packages = ["markforge"]
+
+[[tool.mypy.overrides]]
+module = ["atheris"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
