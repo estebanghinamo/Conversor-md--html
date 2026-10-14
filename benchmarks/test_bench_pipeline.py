@@ -1,7 +1,8 @@
 """Benchmarks del pipeline (pytest-benchmark). Se lanzan a mano: ver docs/testing.md.
 
 Los inputs se generan aqui y quedan por debajo de los limites del lexer y el parser, para medir
-trabajo real y no el camino de error. No hay umbrales de tiempo: son numeros de referencia.
+trabajo real y no el camino de error (salvo el caso que supera la profundidad inline, a proposito).
+No hay umbrales de tiempo: son numeros de referencia.
 """
 
 from collections.abc import Callable
@@ -112,6 +113,12 @@ def test_convert_long_line(benchmark: BenchmarkFixture) -> None:
 
 
 def test_convert_nested_emphasis(benchmark: BenchmarkFixture) -> None:
+    source = ("*a **b " * 8) + ("c** d*" * 8) + "\n"
+    benchmark(convert, source)
+
+
+def test_convert_emphasis_beyond_depth_limit(benchmark: BenchmarkFixture) -> None:
+    # Caso adversarial: supera MAX_INLINE_DEPTH y el inline deja de formatear (modo congelado).
     source = ("*a **b " * 400) + ("c** d*" * 400) + "\n"
     benchmark(convert, source)
 

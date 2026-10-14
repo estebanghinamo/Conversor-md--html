@@ -63,7 +63,7 @@ Primera corrida (14/10/2026, 300 s): más de 1,1 millones de ejecuciones a ~4.00
 
 ## Benchmarks (pytest-benchmark)
 
-[`benchmarks/test_bench_pipeline.py`](../benchmarks/test_bench_pipeline.py) mide cada etapa del pipeline sobre un documento tipico y el pipeline completo (`convert()`) sobre entradas grandes o dificiles: cerca del limite de 2 MB, una tabla de 80.000 celdas, una linea muy larga, enfasis anidado y muchos corchetes o delimitadores. Los inputs se generan en el propio archivo y quedan por debajo de los limites, para medir trabajo real y no el camino de error.
+[`benchmarks/test_bench_pipeline.py`](../benchmarks/test_bench_pipeline.py) mide cada etapa del pipeline sobre un documento tipico y el pipeline completo (`convert()`) sobre entradas grandes o dificiles: cerca del limite de 2 MB, una tabla de ~80.000 celdas, una linea muy larga, enfasis anidado y muchos corchetes o delimitadores. Los inputs se generan en el propio archivo y quedan por debajo de los limites, para medir trabajo real y no el camino de error; la unica excepcion es el caso de enfasis que supera la profundidad inline, que se mide a proposito.
 
 ```bash
 uv run pytest benchmarks --benchmark-only
@@ -76,7 +76,8 @@ Referencia (14/10/2026, Windows 11, Python 3.12.5; tiempo medio de `convert()` s
 | Caso | Tiempo |
 |---|---|
 | Linea de ~100 KB | ~2 ms |
-| Enfasis anidado (400 repeticiones de `*a **b`) | ~8 ms |
+| Enfasis anidado dentro del limite de profundidad (8 repeticiones de `*a **b`) | ~0,7 ms |
+| Enfasis que supera `MAX_INLINE_DEPTH` (400 repeticiones; el inline deja de formatear) | ~9 ms |
 | 1.500 delimitadores sin cerrar | ~11 ms |
 | 990 corchetes (900 enlaces y 90 sin cerrar) | ~46 ms |
 | Documento tipico de ~170 KB | ~450 ms (lexer ~105, parser ~140, sanitizer ~110, renderer ~50) |
