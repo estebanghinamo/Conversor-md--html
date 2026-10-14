@@ -46,7 +46,7 @@ Mientras desarrollas, basta con tests puntuales (`uv run pytest tests/unit/test_
 
 ## Cambios de seguridad
 
-El archivo `sanitizer.py` tiene un responsable asignado en `CODEOWNERS`, así que cualquier cambio ahí pide revisión explícita. Explica en el PR qué amenaza cubre o qué política cambia (sección *Security considerations* de la plantilla) y añade tests de regresión. Para reportar una vulnerabilidad, no abras un issue público: contacta con el mantenedor del repositorio.
+El archivo `sanitizer.py` tiene un responsable asignado en `CODEOWNERS`, así que cualquier cambio ahí pide revisión explícita. Explica en el PR qué amenaza cubre o qué política cambia (sección *Security considerations* de la plantilla) y añade tests de regresión. Para reportar una vulnerabilidad, no abras un issue público: sigue la [política de seguridad](../SECURITY.md).
 
 ## Ramas, commits y PRs
 
