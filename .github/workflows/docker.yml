@@ -37,7 +37,7 @@ jobs:
           test "$(docker run --rm markforge:ci --version | wc -l)" -ge 1
       - name: Check non-root user
         run: test "$(docker run --rm --entrypoint id markforge:ci -u)" != "0"
-      - uses: aquasecurity/trivy-action@0.33.1
+      - uses: aquasecurity/trivy-action@v0.33.1
         with:
           image-ref: markforge:ci
           severity: CRITICAL,HIGH
