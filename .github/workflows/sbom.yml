@@ -1,0 +1,30 @@
+name: SBOM
+
+# Genera el SBOM (CycloneDX) de la imagen y lo sube como artifact.
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  schedule:
+    - cron: "0 8 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    name: Syft (CycloneDX)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: docker build -t markforge:sbom .
+      - uses: anchore/sbom-action@v0
+        with:
+          image: markforge:sbom
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          artifact-name: sbom.cdx.json
+          upload-release-assets: false
