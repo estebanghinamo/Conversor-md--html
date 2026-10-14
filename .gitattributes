@@ -1,0 +1,3 @@
+# Los fixtures de los golden tests se comparan byte a byte con la salida de
+# convert() (que usa LF): fijar LF evita que core.autocrlf=true en Windows los rompa.
+tests/fixtures/** text eol=lf
