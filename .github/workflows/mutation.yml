@@ -48,7 +48,7 @@ jobs:
       - name: Survivors
         if: always()
         run: uv run mutmut results > mutants/survivors.txt || true
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mutmut-results

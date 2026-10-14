@@ -31,7 +31,7 @@ jobs:
         run: |
           mkdir -p corpus
           uv run python tests/fuzz/fuzz_lexer.py corpus -max_total_time="$FUZZ_SECONDS" -max_len=4096 -timeout=10 -rss_limit_mb=2048
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: fuzz-lexer-results
