@@ -1,6 +1,6 @@
 [project]
 name = "markforge"
-version = "0.0.1"
+version = "0.1.0"
 description = "Biblioteca y CLI que transforma un subconjunto controlado de Markdown en HTML seguro."
 readme = "README.md"
 requires-python = ">=3.12"
