@@ -240,6 +240,7 @@ uv run pytest tests/property                # tests de propiedades (Hypothesis)
 uv run pytest tests/property --hypothesis-profile=deep   # búsqueda profunda (5.000 ejemplos)
 uv run ruff format . && uv run ruff check . # formato y lint
 uv run mypy                                 # tipado estricto
+uv run pytest benchmarks --benchmark-only   # benchmarks (pytest-benchmark)
 uv run pip-audit                            # vulnerabilidades en dependencias
 ```
 
@@ -256,6 +257,7 @@ uv run pip-audit                            # vulnerabilidades en dependencias
 │   ├── renderer.py     # AST seguro → HTML (escape único)
 │   ├── cli.py          # solo E/S
 │   └── errors.py       # jerarquía de excepciones
+├── 📂 benchmarks/      # pytest-benchmark (se lanzan a mano)
 ├── 📂 tests/
 │   ├── unit/ · integration/ · property/
 │   └── fixtures/       # golden tests (.md ↔ .html)
@@ -278,6 +280,7 @@ uv run pip-audit                            # vulnerabilidades en dependencias
 - [x] 🌀 Fuzzing con Atheris (lexer; workflow semanal)
 - [x] 🐳 Imagen Docker (usuario no-root, Hadolint, Trivy)
 - [x] 📋 SBOM (CycloneDX)
+- [x] ⏱️ Benchmarks del pipeline (`pytest-benchmark`)
 
 ---
 
