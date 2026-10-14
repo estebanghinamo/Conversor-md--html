@@ -7,6 +7,7 @@ genera HTML ni decide seguridad: el contenido del AST sigue siendo crudo.
 from collections.abc import Sequence
 
 from markforge.ast import (
+    Align,
     Block,
     BlockQuote,
     CodeBlock,
@@ -16,6 +17,9 @@ from markforge.ast import (
     List,
     ListItem,
     Paragraph,
+    Table,
+    TableCell,
+    TableRow,
 )
 from markforge.errors import ParserError
 from markforge.inline import parse_inline
@@ -50,12 +54,31 @@ def _parse_block(tokens: Sequence[Token], index: int, depth: int) -> tuple[Block
             return HorizontalRule(), index + 1
         case TokenType.CODE_BLOCK:
             return CodeBlock(token.value, token.language), index + 1
+        case TokenType.TABLE:
+            return _parse_table(token), index + 1
         case TokenType.BLOCKQUOTE:
             return _parse_blockquote(tokens, index, depth)
         case TokenType.LIST_ITEM:
             return _parse_list(tokens, index)
         case _:
             return _parse_paragraph(tokens, index)
+
+
+def _parse_table(token: Token) -> Table:
+    header, *body = (_parse_row(row) for row in token.rows)
+    return Table(tuple(_align(value) for value in token.aligns), header, tuple(body))
+
+
+def _parse_row(cells: tuple[str, ...]) -> TableRow:
+    return TableRow(tuple(TableCell(parse_inline(cell)) for cell in cells))
+
+
+def _align(value: str | None) -> Align:
+    match value:
+        case "left" | "center" | "right":
+            return value
+        case _:
+            return None
 
 
 def _parse_paragraph(tokens: Sequence[Token], start: int) -> tuple[Paragraph, int]:

@@ -19,6 +19,9 @@ from markforge.ast import (
     Paragraph,
     Strikethrough,
     Strong,
+    Table,
+    TableCell,
+    TableRow,
     Text,
 )
 from markforge.errors import SanitizationError
@@ -296,6 +299,109 @@ def test_unknown_list_item_is_rejected() -> None:
     fake = cast(Any, List(False, (cast(ListItem, object()),)))
     with pytest.raises(SanitizationError, match="nodo desconocido"):
         clean(fake)
+
+
+def cell(*children: Inline) -> TableCell:
+    return TableCell(children)
+
+
+def row(*cells: TableCell) -> TableRow:
+    return TableRow(cells)
+
+
+def test_table_is_kept_and_its_cells_are_sanitized() -> None:
+    link = Link("javascript:alert(1)", (t("x"),))
+    source = Table(
+        ("left", None),
+        row(cell(t("a" + chr(0) + "b")), cell(link)),
+        (row(cell(Image("data:x", "alt")), cell(InlineCode("c" + chr(0x202E)))),),
+    )
+    assert clean(source) == (
+        Table(
+            ("left", None),
+            row(cell(t("ab")), cell(t("x"))),
+            (row(cell(t("alt")), cell(InlineCode("c"))),),
+        ),
+    )
+
+
+def test_safe_link_in_a_table_cell_is_kept() -> None:
+    link = Link("https://a.b", (t("x"),))
+    source = Table((None,), row(cell(link)), ())
+    assert clean(source) == (source,)
+
+
+def test_adjacent_text_in_a_cell_is_merged() -> None:
+    node = Link("data:x", (t("b"),))
+    source = Table((None,), row(cell(t("a "), node, t(" c"))), ())
+    assert clean(source) == (Table((None,), row(cell(t("a b c"))), ()),)
+
+
+@pytest.mark.parametrize("align", ["left", "center", "right", None])
+def test_valid_alignments_are_kept(align: str | None) -> None:
+    source = Table((cast(Any, align),), row(cell()), ())
+    assert clean(source) == (source,)
+
+
+@pytest.mark.parametrize("align", ["justify", "LEFT", '" onclick="x', "", 1, True])
+def test_invalid_alignment_becomes_none(align: object) -> None:
+    source = Table((cast(Any, align),), row(cell(t("a"))), ())
+    assert clean(source) == (Table((None,), row(cell(t("a"))), ()),)
+
+
+@pytest.mark.parametrize("width", [0, 1, 3])
+def test_header_with_wrong_width_is_rejected(width: int) -> None:
+    source = Table((None, None), row(*[cell()] * width), ())
+    with pytest.raises(SanitizationError, match="celdas"):
+        clean(source)
+
+
+@pytest.mark.parametrize("width", [0, 1, 3])
+def test_body_row_with_wrong_width_is_rejected(width: int) -> None:
+    source = Table((None, None), row(cell(), cell()), (row(*[cell()] * width),))
+    with pytest.raises(SanitizationError, match="celdas"):
+        clean(source)
+
+
+@pytest.mark.parametrize("fake", [object(), "texto", None])
+def test_unknown_table_row_is_rejected(fake: object) -> None:
+    source = Table((None,), cast(TableRow, fake), ())
+    with pytest.raises(SanitizationError, match="nodo desconocido"):
+        clean(source)
+    body = Table((None,), row(cell()), (cast(TableRow, fake),))
+    with pytest.raises(SanitizationError, match="nodo desconocido"):
+        clean(body)
+
+
+@pytest.mark.parametrize("fake", [object(), "texto", None])
+def test_unknown_table_cell_is_rejected(fake: object) -> None:
+    source = Table((None,), row(cast(TableCell, fake)), ())
+    with pytest.raises(SanitizationError, match="nodo desconocido"):
+        clean(source)
+
+
+@pytest.mark.parametrize(
+    ("levels", "content", "accepted"),
+    [
+        (60, (t("x"),), True),  # tabla en 61, fila 62, celda 63, inline 64
+        (61, (t("x"),), False),  # falla en el inline
+        (61, (), True),  # celda vacía en 64
+        (62, (), False),  # falla en la celda
+        (63, (), False),  # falla en la fila
+        (64, (), False),  # falla en la tabla misma
+    ],
+)
+def test_table_depth_is_checked_in_block_row_cell_and_inline(
+    levels: int, content: tuple[Inline, ...], accepted: bool
+) -> None:
+    node: Block = Table((None,), row(cell(*content)), ())
+    for _ in range(levels):
+        node = BlockQuote((node,))
+    if accepted:
+        assert clean(node)
+    else:
+        with pytest.raises(SanitizationError, match="profundidad"):
+            clean(node)
 
 
 def test_bidi_overrides_are_removed_from_text() -> None:

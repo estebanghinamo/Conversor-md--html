@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
@@ -19,6 +19,9 @@ from markforge.ast import (
     Paragraph,
     Strikethrough,
     Strong,
+    Table,
+    TableCell,
+    TableRow,
     Text,
 )
 from markforge.errors import RenderError
@@ -221,6 +224,131 @@ def test_depth_within_limit_is_rendered() -> None:
     for _ in range(MAX_RENDER_DEPTH - 2):
         node = BlockQuote((node,))
     assert html(node).count("<blockquote>") == MAX_RENDER_DEPTH - 2
+
+
+def cell(*children: Inline) -> TableCell:
+    return TableCell(children)
+
+
+def row(*cells: TableCell) -> TableRow:
+    return TableRow(cells)
+
+
+def test_table_with_header_and_body() -> None:
+    table = Table(
+        (None, None),
+        row(cell(t("a")), cell(t("b"))),
+        (row(cell(t("1")), cell(t("2"))), row(cell(t("3")), cell(t("4")))),
+    )
+    assert html(table) == (
+        "<table>\n"
+        "<thead>\n"
+        "<tr><th>a</th><th>b</th></tr>\n"
+        "</thead>\n"
+        "<tbody>\n"
+        "<tr><td>1</td><td>2</td></tr>\n"
+        "<tr><td>3</td><td>4</td></tr>\n"
+        "</tbody>\n"
+        "</table>\n"
+    )
+
+
+def test_table_without_rows_has_no_tbody() -> None:
+    table = Table((None,), row(cell(t("a"))), ())
+    assert html(table) == "<table>\n<thead>\n<tr><th>a</th></tr>\n</thead>\n</table>\n"
+
+
+def test_table_alignments_apply_to_header_and_body_cells() -> None:
+    table = Table(
+        ("left", "center", "right", None),
+        row(cell(t("a")), cell(t("b")), cell(t("c")), cell(t("d"))),
+        (row(cell(t("1")), cell(t("2")), cell(t("3")), cell(t("4"))),),
+    )
+    assert html(table) == (
+        "<table>\n<thead>\n"
+        '<tr><th align="left">a</th><th align="center">b</th>'
+        '<th align="right">c</th><th>d</th></tr>\n'
+        "</thead>\n<tbody>\n"
+        '<tr><td align="left">1</td><td align="center">2</td>'
+        '<td align="right">3</td><td>4</td></tr>\n'
+        "</tbody>\n</table>\n"
+    )
+
+
+def test_table_cells_render_inline_markup_and_escape_text() -> None:
+    table = Table(
+        (None, None),
+        row(cell(Strong((t("a"),))), cell(t("<b>&"))),
+        (row(cell(Link("/u", (t("x"),))), cell(InlineCode("<i>"), Image("/i.png", '"'))),),
+    )
+    output = html(table)
+    assert "<th><strong>a</strong></th><th>&lt;b&gt;&amp;</th>" in output
+    assert (
+        '<td><a href="/u" rel="noopener noreferrer">x</a></td>'
+        '<td><code>&lt;i&gt;</code><img src="/i.png" alt="&quot;"></td>'
+    ) in output
+    assert "<b>" not in output
+    assert "<i>" not in output
+
+
+def test_empty_cell_renders_empty_element() -> None:
+    table = Table((None,), row(cell()), (row(cell()),))
+    assert "<tr><th></th></tr>" in html(table)
+    assert "<tr><td></td></tr>" in html(table)
+
+
+def test_table_between_other_blocks() -> None:
+    table = Table((None,), row(cell(t("a"))), ())
+    assert html(para(t("x")), table).startswith("<p>x</p>\n<table>\n")
+
+
+@pytest.mark.parametrize("align", ["justify", "LEFT", '" onclick="x', 1, True])
+def test_invalid_alignment_raises(align: object) -> None:
+    table = Table((cast(Any, align),), row(cell(t("a"))), ())
+    with pytest.raises(RenderError, match="alineación"):
+        html(table)
+
+
+@pytest.mark.parametrize("width", [0, 1, 3])
+def test_row_with_wrong_width_raises(width: int) -> None:
+    header = Table((None, None), row(*[cell()] * width), ())
+    with pytest.raises(RenderError, match="celdas"):
+        html(header)
+    body = Table((None, None), row(cell(), cell()), (row(*[cell()] * width),))
+    with pytest.raises(RenderError, match="celdas"):
+        html(body)
+
+
+@pytest.mark.parametrize("fake", [object(), "texto", None])
+def test_unknown_table_row_and_cell_raise(fake: object) -> None:
+    with pytest.raises(RenderError, match="nodo desconocido"):
+        html(Table((None,), cast(TableRow, fake), ()))
+    with pytest.raises(RenderError, match="nodo desconocido"):
+        html(Table((None,), row(cast(TableCell, fake)), ()))
+
+
+@pytest.mark.parametrize(
+    ("levels", "content", "accepted"),
+    [
+        (60, (t("x"),), True),
+        (61, (t("x"),), False),
+        (61, (), True),
+        (62, (), False),
+        (63, (), False),
+        (64, (), False),
+    ],
+)
+def test_table_depth_is_checked_in_block_row_cell_and_inline(
+    levels: int, content: tuple[Inline, ...], accepted: bool
+) -> None:
+    node: Block = Table((None,), row(cell(*content)), ())
+    for _ in range(levels):
+        node = BlockQuote((node,))
+    if accepted:
+        assert "<table>" in html(node)
+    else:
+        with pytest.raises(RenderError, match="profundidad"):
+            html(node)
 
 
 def test_large_document_renders_without_quadratic_time() -> None:

@@ -215,9 +215,9 @@ html = convert("# Hola **mundo**")
 
 ### 📝 Markdown soportado
 
-Encabezados · párrafos · listas ordenadas y no ordenadas · citas · reglas horizontales · bloques de código con *fences* · **énfasis** · **negrita** · ~~tachado~~ · `código inline` · enlaces · imágenes · escapes con `\`.
+Encabezados · párrafos · listas ordenadas y no ordenadas · citas · reglas horizontales · bloques de código con *fences* · tablas simples con alineación · **énfasis** · **negrita** · ~~tachado~~ · `código inline` · enlaces · imágenes · escapes con `\`.
 
-> ℹ️ Es un **subconjunto deliberado** de Markdown, no todo CommonMark. Tablas, HTML crudo, listas anidadas y enlaces con título quedan fuera de alcance por diseño.
+> ℹ️ Es un **subconjunto deliberado** de Markdown, no todo CommonMark. HTML crudo, listas anidadas, tablas complejas y enlaces con título quedan fuera de alcance por diseño. Las líneas que son solo etiquetas HTML (`<div align="center">`, `</div>`) se descartan; cualquier otro HTML se escapa como texto.
 
 ---
 

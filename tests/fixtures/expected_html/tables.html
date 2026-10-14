@@ -1,0 +1,50 @@
+<h1>Tablas</h1>
+<table>
+<thead>
+<tr><th align="left">Nombre</th><th align="center">Rol</th><th align="right">Puntos</th></tr>
+</thead>
+<tbody>
+<tr><td align="left">Ana</td><td align="center"><strong>Admin</strong></td><td align="right">10</td></tr>
+<tr><td align="left">Luis</td><td align="center"><code>dev</code></td><td align="right">7</td></tr>
+<tr><td align="left">A | B</td><td align="center"><a href="https://a.b" rel="noopener noreferrer">sitio</a></td><td align="right">3</td></tr>
+</tbody>
+</table>
+<p>Sin fila de alineación no hay tabla:</p>
+<p>a | b
+c | d</p>
+<p>Tabla con filas cortas, largas y sin tuberías externas:</p>
+<table>
+<thead>
+<tr><th>x</th><th>y</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td></td></tr>
+<tr><td>1</td><td>2</td></tr>
+</tbody>
+</table>
+<p>Peligros dentro de celdas:</p>
+<table>
+<thead>
+<tr><th>Entrada</th><th>Salida</th></tr>
+</thead>
+<tbody>
+<tr><td>&lt;script&gt;alert(1)&lt;/script&gt;</td><td>x</td></tr>
+<tr><td>&lt;img src=x onerror=alert(1)&gt; hola</td><td>i</td></tr>
+</tbody>
+</table>
+<blockquote>
+<table>
+<thead>
+<tr><th>q</th><th>r</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>2</td></tr>
+</tbody>
+</table>
+</blockquote>
+<p>Solo encabezado:</p>
+<table>
+<thead>
+<tr><th>solo</th></tr>
+</thead>
+</table>

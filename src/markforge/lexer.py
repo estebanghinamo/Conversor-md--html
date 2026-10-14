@@ -15,6 +15,8 @@ from markforge.errors import LexerError
 MAX_INPUT_LENGTH = 2_000_000
 MAX_LINE_LENGTH = 100_000
 MAX_LINES = 200_000
+MAX_TABLE_COLUMNS = 20
+MAX_TABLE_CELLS = 100_000
 
 _MAX_INDENT = 3
 _MAX_HEADING_LEVEL = 6
@@ -24,6 +26,13 @@ _MIN_RULE_LENGTH = 3
 _WHITESPACE = " \t"
 _RULE_CHARS = "-*_"
 _BULLET_CHARS = "-*+"
+# (dos puntos a la izquierda, a la derecha) -> alineación de la columna
+_ALIGNMENT_BY_COLONS: dict[tuple[bool, bool], str | None] = {
+    (True, True): "center",
+    (True, False): "left",
+    (False, True): "right",
+    (False, False): None,
+}
 
 
 class TokenType(Enum):
@@ -33,6 +42,7 @@ class TokenType(Enum):
     BLOCKQUOTE = auto()
     LIST_ITEM = auto()
     CODE_BLOCK = auto()
+    TABLE = auto()
     TEXT = auto()
 
 
@@ -44,6 +54,9 @@ class Token:
     level: int = 0
     ordered: bool = False
     language: str | None = None
+    # Solo TABLE: celdas crudas (la primera fila es el encabezado) y alineación por columna.
+    rows: tuple[tuple[str, ...], ...] = ()
+    aligns: tuple[str | None, ...] = ()
 
 
 class _Fence(NamedTuple):
@@ -59,14 +72,21 @@ def tokenize(source: str) -> list[Token]:
     lines = _split_lines(source)
     tokens: list[Token] = []
     index = 0
+    cells_left = MAX_TABLE_CELLS
     while index < len(lines):
         fence = _open_fence(lines[index])
-        if fence is None:
-            tokens.append(_tokenize_line(lines[index], index + 1))
-            index += 1
-        else:
+        if fence is not None:
             token, index = _read_code_block(lines, index, fence)
             tokens.append(token)
+            continue
+        table = _read_table(lines, index, cells_left)
+        if table is not None:
+            token, index = table
+            cells_left -= len(token.rows) * len(token.aligns)
+            tokens.append(token)
+            continue
+        tokens.append(_tokenize_line(lines[index], index + 1))
+        index += 1
     return tokens
 
 
@@ -126,9 +146,100 @@ def _read_code_block(lines: list[str], start: int, fence: _Fence) -> tuple[Token
     return token, index
 
 
+def _read_table(lines: list[str], start: int, cells_left: int) -> tuple[Token, int] | None:
+    """Lee una tabla (encabezado, fila de alineación y filas) o devuelve None."""
+    header_line = lines[start]
+    if start + 1 >= len(lines) or "|" not in header_line:
+        return None
+    if _tokenize_line(header_line, start + 1).type is not TokenType.TEXT:
+        return None
+    aligns = _alignments(lines[start + 1])
+    header = _split_cells(header_line)
+    if aligns is None or len(header) != len(aligns):
+        return None
+    columns = len(aligns)
+    if columns > MAX_TABLE_COLUMNS:
+        msg = f"la tabla de la línea {start + 1} excede {MAX_TABLE_COLUMNS} columnas"
+        raise LexerError(msg)
+    rows = [tuple(header)]
+    _check_cells(len(rows) * columns, cells_left)
+    index = start + 2
+    while index < len(lines) and _is_table_row(lines[index]):
+        cells = _split_cells(lines[index])[:columns]
+        rows.append(tuple(cells) + ("",) * (columns - len(cells)))
+        _check_cells(len(rows) * columns, cells_left)
+        index += 1
+    return Token(TokenType.TABLE, "", start + 1, rows=tuple(rows), aligns=aligns), index
+
+
+def _check_cells(total: int, cells_left: int) -> None:
+    if total > cells_left:
+        msg = f"las tablas exceden {MAX_TABLE_CELLS} celdas en total"
+        raise LexerError(msg)
+
+
+def _is_table_row(line: str) -> bool:
+    return _open_fence(line) is None and _tokenize_line(line, 0).type is TokenType.TEXT
+
+
+def _split_cells(line: str) -> list[str]:
+    """Divide una fila en celdas por `|` (un `\\|` es un `|` literal)."""
+    body = line.strip(_WHITESPACE)
+    if body.startswith("|"):
+        body = body[1:]
+    cells: list[str] = []
+    current: list[str] = []
+    index = 0
+    while index < len(body):
+        char = body[index]
+        if char == "\\" and body[index + 1 : index + 2] == "|":
+            current.append("|")
+            index += 2
+            continue
+        if char == "|":
+            cells.append("".join(current).strip(_WHITESPACE))
+            current = []
+        else:
+            current.append(char)
+        index += 1
+    tail = "".join(current).strip(_WHITESPACE)
+    if tail or not body.endswith("|"):
+        cells.append(tail)
+    return cells
+
+
+def _alignments(line: str) -> tuple[str | None, ...] | None:
+    """Alineación por columna si `line` es una fila de guiones (`|:--|:-:|--:|`)."""
+    if "|" not in line or _indent(line) > _MAX_INDENT:
+        return None
+    aligns: list[str | None] = []
+    for cell in _split_cells(line):
+        left = int(cell.startswith(":"))
+        right = int(len(cell) > left and cell.endswith(":"))
+        core = cell[left : len(cell) - right]
+        if not core or core.strip("-"):
+            return None
+        aligns.append(_ALIGNMENT_BY_COLONS[bool(left), bool(right)])
+    return tuple(aligns) if aligns else None
+
+
+def _only_html_tags(body: str) -> bool:
+    """True si `body` son solo etiquetas HTML seguidas, sin texto entre ellas."""
+    index = 0
+    while index < len(body):
+        end = body.find(">", index + 1)
+        if body[index] != "<" or end == -1:
+            return False
+        name = body[index + 1 : end].removeprefix("/")
+        if not name[:1].isascii() or not name[:1].isalpha() or "<" in name:
+            return False
+        index = end + 1
+    return True
+
+
 def _tokenize_line(line: str, number: int) -> Token:
     body = line.strip(_WHITESPACE)
-    if not body:
+    if not body or _only_html_tags(body):
         return Token(TokenType.BLANK, "", number)
     if _indent(line) <= _MAX_INDENT:
         for matcher in (_heading, _horizontal_rule, _blockquote, _list_item):

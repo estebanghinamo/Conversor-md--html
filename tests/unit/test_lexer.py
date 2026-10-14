@@ -1,7 +1,18 @@
+import contextlib
+
 import pytest
 
 from markforge.errors import LexerError
-from markforge.lexer import MAX_INPUT_LENGTH, MAX_LINE_LENGTH, MAX_LINES, Token, TokenType, tokenize
+from markforge.lexer import (
+    MAX_INPUT_LENGTH,
+    MAX_LINE_LENGTH,
+    MAX_LINES,
+    MAX_TABLE_CELLS,
+    MAX_TABLE_COLUMNS,
+    Token,
+    TokenType,
+    tokenize,
+)
 
 NEWLINE = chr(10)
 
@@ -249,3 +260,236 @@ def test_fence_info_made_of_unicode_whitespace_does_not_crash(code: int) -> None
 def test_fence_language_is_the_first_word_split_by_space_or_tab() -> None:
     assert one("```py" + chr(9) + "title\nx\n```").language == "py"
     assert one("```py  title\nx\n```").language == "py"
+
+
+# --- tablas ----------------------------------------------------------------------------------
+
+
+def table(source: str) -> Token:
+    token = one(source)
+    assert token.type is TokenType.TABLE
+    return token
+
+
+def kinds(source: str) -> list[TokenType]:
+    return [token.type for token in tokenize(source)]
+
+
+def test_basic_table() -> None:
+    token = table("| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |")
+    assert token.rows == (("a", "b"), ("1", "2"), ("3", "4"))
+    assert token.aligns == (None, None)
+    assert token.line == 1
+
+
+def test_table_without_outer_pipes() -> None:
+    assert table("a | b\n--|--\n1 | 2").rows == (("a", "b"), ("1", "2"))
+
+
+def test_table_with_only_a_header_has_no_body_rows() -> None:
+    assert table("a|b\n-|-\n").rows == (("a", "b"),)
+
+
+def test_table_alignments() -> None:
+    token = table("a|b|c|d\n:--|:-:|--:|---")
+    assert token.aligns == ("left", "center", "right", None)
+
+
+def test_alignment_marker_needs_at_least_one_dash() -> None:
+    assert kinds("a|b\n:|-") == [TokenType.TEXT, TokenType.TEXT]
+    assert kinds("a|b\n::|--") == [TokenType.TEXT, TokenType.TEXT]
+    assert kinds("a|b\n|-") == [TokenType.TEXT, TokenType.TEXT]
+
+
+def test_escaped_pipe_is_a_literal_pipe_in_the_cell() -> None:
+    token = table("a|b\n-|-\nx" + chr(92) + "|y|z")
+    assert token.rows[1] == ("x|y", "z")
+
+
+def test_pipe_at_the_end_of_a_row_does_not_add_a_cell() -> None:
+    assert table("a|b|\n-|-|\n1|2|").rows == (("a", "b"), ("1", "2"))
+
+
+def test_short_rows_are_padded_and_long_rows_truncated() -> None:
+    token = table("a|b|c\n-|-|-\n1|x\n1|2|3|4|5")
+    assert token.rows[1:] == (("1", "x", ""), ("1", "2", "3"))
+
+
+def test_row_that_is_only_a_pipe_gives_empty_cells() -> None:
+    assert table("a|b\n-|-\n|").rows[1] == ("", "")
+
+
+def test_table_inline_markup_is_left_raw() -> None:
+    assert table("**a**|`b`\n-|-").rows == (("**a**", "`b`"),)
+
+
+def test_header_without_an_alignment_row_is_not_a_table() -> None:
+    assert kinds("a|b\nc|d") == [TokenType.TEXT, TokenType.TEXT]
+    assert kinds("a|b") == [TokenType.TEXT]
+
+
+def test_header_without_pipe_is_not_a_table() -> None:
+    assert kinds("ab\n-|-") == [TokenType.TEXT, TokenType.TEXT]
+
+
+def test_alignment_row_without_pipe_is_not_a_table() -> None:
+    assert kinds("a|b\n---") == [TokenType.TEXT, TokenType.HORIZONTAL_RULE]
+
+
+def test_alignment_row_with_other_characters_is_not_a_table() -> None:
+    assert kinds("a|b\n-x|--") == [TokenType.TEXT, TokenType.TEXT]
+
+
+def test_alignment_row_indented_four_spaces_is_not_a_table() -> None:
+    assert kinds("a|b\n    -|-") == [TokenType.TEXT, TokenType.TEXT]
+
+
+def test_header_and_alignment_row_with_different_column_counts_are_not_a_table() -> None:
+    assert kinds("a|b|c\n--|--") == [TokenType.TEXT, TokenType.TEXT]
+    assert kinds("a|b\n--|--|--") == [TokenType.TEXT, TokenType.TEXT]
+
+
+@pytest.mark.parametrize("header", ["# a|b", "> a|b", "- a|b", "```a|b"])
+def test_header_must_be_a_plain_text_line(header: str) -> None:
+    assert TokenType.TABLE not in kinds(header + "\n-|-")
+
+
+def test_table_ends_at_a_blank_line() -> None:
+    tokens = tokenize("a|b\n-|-\n1|2\n\n3|4")
+    assert [t.type for t in tokens] == [TokenType.TABLE, TokenType.BLANK, TokenType.TEXT]
+    assert tokens[0].rows == (("a", "b"), ("1", "2"))
+
+
+@pytest.mark.parametrize(
+    ("after", "kind"),
+    [
+        ("# h", TokenType.HEADING),
+        ("---", TokenType.HORIZONTAL_RULE),
+        ("> q", TokenType.BLOCKQUOTE),
+        ("- i", TokenType.LIST_ITEM),
+    ],
+)
+def test_table_ends_at_another_block(after: str, kind: TokenType) -> None:
+    tokens = tokenize("a|b\n-|-\n1|2\n" + after)
+    assert [t.type for t in tokens] == [TokenType.TABLE, kind]
+    assert tokens[1].line == 4
+
+
+def test_table_ends_at_a_code_fence_and_the_fence_is_still_read() -> None:
+    tokens = tokenize("a|b\n-|-\n```\nx|y\n```")
+    assert [t.type for t in tokens] == [TokenType.TABLE, TokenType.CODE_BLOCK]
+    assert tokens[1].value == "x|y"
+
+
+def test_table_ends_at_a_line_made_only_of_html_tags() -> None:
+    assert kinds("a|b\n-|-\n1|2\n</div>") == [TokenType.TABLE, TokenType.BLANK]
+
+
+def test_pipes_inside_a_code_block_are_not_a_table() -> None:
+    assert one("```\na|b\n-|-\n```").type is TokenType.CODE_BLOCK
+
+
+def test_a_text_line_before_the_header_stays_a_separate_token() -> None:
+    tokens = tokenize("intro\na|b\n-|-")
+    assert [t.type for t in tokens] == [TokenType.TEXT, TokenType.TABLE]
+    assert tokens[1].line == 2
+
+
+def test_two_tables_separated_by_a_blank_line() -> None:
+    assert kinds("a|b\n-|-\n\nc|d\n-|-") == [TokenType.TABLE, TokenType.BLANK, TokenType.TABLE]
+
+
+def test_blockquote_lines_carry_the_table_source_for_the_parser() -> None:
+    inner = [t.value for t in tokenize("> a|b\n> -|-\n> 1|2")]
+    assert inner == ["a|b", "-|-", "1|2"]
+    assert table(NEWLINE.join(inner)).rows == (("a", "b"), ("1", "2"))
+
+
+def test_table_column_limit() -> None:
+    def source(columns: int) -> str:
+        return "|".join(["a"] * columns) + NEWLINE + "|".join(["-"] * columns)
+
+    assert len(table(source(MAX_TABLE_COLUMNS)).aligns) == MAX_TABLE_COLUMNS
+    with pytest.raises(LexerError, match="columnas"):
+        tokenize(source(MAX_TABLE_COLUMNS + 1))
+
+
+def test_table_cell_limit_counts_header_and_rows() -> None:
+    header = "a|" + NEWLINE + "-|" + NEWLINE
+    row = "x|" + NEWLINE
+    assert len(table(header + row * (MAX_TABLE_CELLS - 1)).rows) == MAX_TABLE_CELLS
+    with pytest.raises(LexerError, match="celdas"):
+        tokenize(header + row * MAX_TABLE_CELLS)
+
+
+def test_table_cell_limit_is_shared_by_all_tables_of_the_input() -> None:
+    half = "a|" + NEWLINE + "-|" + NEWLINE + ("x|" + NEWLINE) * (MAX_TABLE_CELLS // 2 - 1)
+    assert len(tokenize(half + NEWLINE + half)) == 3
+    with pytest.raises(LexerError, match="celdas"):
+        tokenize(half + NEWLINE + half + "y|")
+
+
+@pytest.mark.parametrize(
+    "source",
+    ["|" * 5_000, "a|" * 5_000 + NEWLINE + "-|" * 5_000, "|-" * 3_000, (chr(92) + "|") * 5_000],
+)
+def test_pathological_pipe_input_is_handled(source: str) -> None:
+    with contextlib.suppress(LexerError):
+        tokenize(source)
+
+
+def test_many_pipes_in_one_row_do_not_blow_up() -> None:
+    row = "|".join(["x"] * 10_000)
+    token = table("a|b\n-|-\n" + row)
+    assert len(token.rows[1]) == 2
+
+
+# --- líneas que son solo etiquetas HTML -----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        '<div align="center">',
+        "</div>",
+        "<br>",
+        "<br/>",
+        '<p align="center"><img src="x.png"></p>',
+        "  <details><summary>",
+        "<b></b>",
+        "<img src=x onerror=alert(1)>",
+    ],
+)
+def test_lines_made_only_of_html_tags_are_blank(line: str) -> None:
+    assert one(line).type is TokenType.BLANK
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "<b>texto</b>",
+        "<b>x</b> y",
+        "x <b>",
+        "<b> x",
+        "<script>alert(1)</script>",
+        "< b>",
+        "<1>",
+        "<>",
+        "</>",
+        "<b",
+        "<b<i>",
+        "<é>",
+        "a<b>",
+    ],
+)
+def test_lines_with_text_around_tags_are_kept_as_text(line: str) -> None:
+    assert one(line).type is TokenType.TEXT
+
+
+def test_html_only_line_keeps_line_numbers_of_the_following_tokens() -> None:
+    tokens = tokenize('<div align="center">\ntexto\n</div>')
+    assert [(t.type, t.line) for t in tokens] == [
+        (TokenType.BLANK, 1),
+        (TokenType.TEXT, 2),
+        (TokenType.BLANK, 3),
+    ]
