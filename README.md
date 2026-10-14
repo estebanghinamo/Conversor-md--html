@@ -231,7 +231,7 @@ Encabezados · párrafos · listas ordenadas y no ordenadas · citas · reglas h
 
 ## 🛠️ Desarrollo
 
-Requiere Python 3.12+ y [uv](https://docs.astral.sh/uv/).
+Requiere Python 3.12+ y [uv](https://docs.astral.sh/uv/). Para contribuir, mira la [guía](docs/contributing.md).
 
 ```bash
 uv sync                                     # crea el entorno desde uv.lock
@@ -263,8 +263,11 @@ uv run pip-audit                            # vulnerabilidades en dependencias
 │   └── fixtures/       # golden tests (.md ↔ .html)
 ├── 📂 docs/
 │   ├── adr/            # decisiones de arquitectura
+│   ├── architecture.md # cómo encajan las etapas del pipeline
+│   ├── threat-model.md # amenazas y mitigaciones
 │   ├── security.md     # política y límites de seguridad
-│   └── testing.md      # estrategia de testing
+│   ├── testing.md      # estrategia de testing
+│   └── contributing.md # guía para contribuir
 └── 📂 .github/         # workflows de CI y seguridad, Dependabot, CODEOWNERS
 ```
 

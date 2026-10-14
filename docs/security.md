@@ -31,7 +31,7 @@ Los límites de línea y de tamaño se vuelven a aplicar al contenido de cada ci
 - **HTML crudo:** el lexer descarta las líneas que son solo etiquetas (`<div align="center">`, `</div>`), que es una pérdida de contenido, no una vía de entrada. Con texto entre o alrededor de las etiquetas no se descarta y se escapa como texto. Nunca se emite HTML escrito por el usuario.
 - **Nodos desconocidos y AST de más de 64 niveles:** `SanitizationError`.
 
-## Contrato con el renderer (pendiente de implementar)
+## Contrato con el renderer
 El sanitizer **no escapa HTML**. El renderer debe, una sola vez al imprimir:
 - escapar `& < > " '` en todo texto, `InlineCode`, `CodeBlock`, `alt` y en los valores de `href` y `src`;
 - emitir `language` solo como nombre de clase;
