@@ -61,6 +61,31 @@ Antes de confiar en una propiedad conviene romper el código a propósito (por e
 
 Primera corrida (14/10/2026, 300 s): más de 1,1 millones de ejecuciones a ~4.000 por segundo, cobertura saturada (154 puntos del lexer) y ningún fallo.
 
+## Benchmarks (pytest-benchmark)
+
+[`benchmarks/test_bench_pipeline.py`](../benchmarks/test_bench_pipeline.py) mide cada etapa del pipeline sobre un documento tipico y el pipeline completo (`convert()`) sobre entradas grandes o dificiles: cerca del limite de 2 MB, una tabla de ~80.000 celdas, una linea muy larga, enfasis anidado y muchos corchetes o delimitadores. Los inputs se generan en el propio archivo y quedan por debajo de los limites, para medir trabajo real y no el camino de error; la unica excepcion es el caso de enfasis que supera la profundidad inline, que se mide a proposito.
+
+```bash
+uv run pytest benchmarks --benchmark-only
+```
+
+No corren en la suite normal ni en el CI: los runners compartidos son ruidosos y un umbral de tiempo daria falsos positivos. Son numeros de referencia para detectar regresiones comparando antes y despues en la misma maquina.
+
+Referencia (14/10/2026, Windows 11, Python 3.12.5; tiempo medio de `convert()` salvo que se indique la etapa):
+
+| Caso | Tiempo |
+|---|---|
+| Linea de ~100 KB | ~2 ms |
+| Enfasis anidado dentro del limite de profundidad (8 repeticiones de `*a **b`) | ~0,7 ms |
+| Enfasis que supera `MAX_INLINE_DEPTH` (400 repeticiones; el inline deja de formatear) | ~9 ms |
+| 1.500 delimitadores sin cerrar | ~11 ms |
+| 990 corchetes (900 enlaces y 90 sin cerrar) | ~46 ms |
+| Documento tipico de ~170 KB | ~450 ms (lexer ~105, parser ~140, sanitizer ~110, renderer ~50) |
+| Tabla de 20 columnas y 4.000 filas | ~1,9 s |
+| Input de ~2 MB (cerca del limite) | ~4,3 s |
+
+El tiempo crece aproximadamente de forma lineal con el tamano: pasar de ~170 KB a ~2 MB (unas 11 veces) multiplica el tiempo por ~10 (los dos documentos no tienen el mismo contenido, asi que es una comparacion de orden de magnitud), sin senales de comportamiento cuadratico.
+
 ## Bugs que encontraron los tests de propiedades
 
 - Un info string de un bloque de código con un carácter de control (por ejemplo U+001F) hacía `IndexError` en el lexer, porque `str.split()` también corta en esos caracteres. Corregido en el lexer.
