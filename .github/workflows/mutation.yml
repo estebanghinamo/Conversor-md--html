@@ -2,6 +2,11 @@ name: Mutation testing
 
 # Workflow aparte: es costoso y mutmut no corre en Windows, por eso no va en ci.yml.
 on:
+  pull_request:
+    paths: ["src/**", "tests/**", "pyproject.toml", "uv.lock", ".github/workflows/mutation.yml"]
+  push:
+    branches: [main]
+    paths: ["src/**", "tests/**", "pyproject.toml", "uv.lock"]
   workflow_dispatch:
   schedule:
     - cron: "0 5 * * 1"
