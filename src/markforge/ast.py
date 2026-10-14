@@ -6,6 +6,7 @@ que devuelve un AST nuevo.
 """
 
 from dataclasses import dataclass
+from typing import Literal
 
 MIN_HEADING_LEVEL = 1
 MAX_HEADING_LEVEL = 6
@@ -94,7 +95,30 @@ class BlockQuote:
     children: tuple["Block", ...]
 
 
-Block = Paragraph | Heading | HorizontalRule | CodeBlock | List | BlockQuote
+Align = Literal["left", "center", "right"] | None
+ALIGNMENTS: frozenset[str] = frozenset({"left", "center", "right"})
+
+
+@dataclass(frozen=True, slots=True)
+class TableCell:
+    children: tuple[Inline, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class TableRow:
+    cells: tuple[TableCell, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class Table:
+    """Tabla con encabezado; `aligns` tiene una entrada por columna."""
+
+    aligns: tuple[Align, ...]
+    header: TableRow
+    rows: tuple[TableRow, ...]
+
+
+Block = Paragraph | Heading | HorizontalRule | CodeBlock | List | BlockQuote | Table
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,4 +126,4 @@ class Document:
     children: tuple[Block, ...]
 
 
-Node = Document | ListItem | Block | Inline
+Node = Document | ListItem | TableRow | TableCell | Block | Inline

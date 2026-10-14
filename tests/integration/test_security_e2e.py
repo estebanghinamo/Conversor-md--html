@@ -105,6 +105,62 @@ def test_every_link_gets_rel_noopener_noreferrer(convert: Callable[[str], str]) 
     assert output.count("<a ") == output.count('rel="noopener noreferrer"')
 
 
+TABLE_PAYLOADS = [
+    "<script>alert(1)</script>",
+    "<img src=x onerror=alert(1)>",
+    "[x](javascript:alert)",
+    "![x](data:text/html,x)",
+    "[x](vbscript:msgbox)",
+    '" onmouseover="alert(1)',
+    "<svg/onload=alert(1)>",
+]
+
+
+@pytest.mark.parametrize("payload", TABLE_PAYLOADS)
+def test_payload_inside_table_cells_is_neutralized(
+    payload: str, convert: Callable[[str], str]
+) -> None:
+    source = f"| {payload} | ok |\n|:--|--:|\n| {payload} | {payload} |"
+    output = convert(source)
+    assert_no_executable_html(output)
+    assert "<table>" in output
+    assert "<img" not in output
+    assert "<svg" not in output
+
+
+def test_markup_in_table_cells_is_escaped_text(convert: Callable[[str], str]) -> None:
+    output = convert("a|b\n-|-\n<script>x</script>|<b onclick=y>")
+    assert "<td>&lt;script&gt;x&lt;/script&gt;</td>" in output
+    assert "<td>&lt;b onclick=y&gt;</td>" in output
+
+
+def test_table_header_cannot_inject_alignment_attributes(
+    convert: Callable[[str], str],
+) -> None:
+    output = convert('a|b\n:" onclick="x:|-')
+    assert "<table" not in output
+    assert output == "<p>a|b\n:&quot; onclick=&quot;x:|-</p>\n"
+
+
+def test_inline_img_with_onerror_between_text_stays_escaped(
+    convert: Callable[[str], str],
+) -> None:
+    output = convert("antes <img src=x onerror=alert(1)> despues")
+    assert output == "<p>antes &lt;img src=x onerror=alert(1)&gt; despues</p>\n"
+
+
+def test_line_with_only_tags_is_dropped_but_text_next_to_it_is_escaped(
+    convert: Callable[[str], str],
+) -> None:
+    output = convert('<div align="center">\n<img src=x onerror=alert(1)>\n</div>\n<b>x</b> y')
+    assert output == "<p>&lt;b&gt;x&lt;/b&gt; y</p>\n"
+
+
+def test_tag_only_line_cannot_hide_a_script_payload(convert: Callable[[str], str]) -> None:
+    output = convert("<script>alert(1)</script>")
+    assert output == "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>\n"
+
+
 def test_deeply_nested_payload_does_not_escape(convert: Callable[[str], str]) -> None:
     source = ">" * 6 + " <script>alert(1)</script>"
     assert_no_executable_html(convert(source))

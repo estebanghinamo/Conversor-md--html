@@ -4,6 +4,7 @@
 - Un link bloqueado se reemplaza por su contenido; una imagen bloqueada, por su `alt`.
 - Descarta lenguajes de bloques de código que no sean un identificador simple.
 - Elimina caracteres de control del texto.
+- Normaliza la alineación de tablas a left/center/right/None y exige filas del ancho de la tabla.
 - Rechaza nodos desconocidos y AST demasiado profundos (`SanitizationError`).
 
 El texto sigue sin escapar a HTML: lo escapa el renderer al imprimir, una sola vez.
@@ -13,6 +14,7 @@ import re
 import unicodedata
 
 from markforge.ast import (
+    Align,
     Block,
     BlockQuote,
     CodeBlock,
@@ -29,6 +31,9 @@ from markforge.ast import (
     Paragraph,
     Strikethrough,
     Strong,
+    Table,
+    TableCell,
+    TableRow,
     Text,
 )
 from markforge.errors import SanitizationError
@@ -112,8 +117,43 @@ def _block(block: Block, depth: int) -> Block:
             return List(ordered, tuple(_item(item, depth + 1) for item in items))
         case BlockQuote(children=children):
             return BlockQuote(tuple(_block(child, depth + 1) for child in children))
+        case Table(aligns=aligns, header=header, rows=rows):
+            return _table(aligns, header, rows, depth)
         case _:
             raise _unknown(block)
+
+
+def _table(
+    aligns: tuple[Align, ...], header: TableRow, rows: tuple[TableRow, ...], depth: int
+) -> Table:
+    safe_header = _row(header, len(aligns), depth + 1)
+    safe_rows = tuple(_row(row, len(aligns), depth + 1) for row in rows)
+    return Table(tuple(_align(align) for align in aligns), safe_header, safe_rows)
+
+
+def _align(align: object) -> Align:
+    match align:
+        case "left" | "center" | "right":
+            return align
+        case _:
+            return None
+
+
+def _row(row: TableRow, columns: int, depth: int) -> TableRow:
+    _check_depth(depth)
+    if not isinstance(row, TableRow):
+        raise _unknown(row)
+    if len(row.cells) != columns:
+        msg = "una fila de la tabla no tiene tantas celdas como columnas"
+        raise SanitizationError(msg)
+    return TableRow(tuple(_cell(cell, depth + 1) for cell in row.cells))
+
+
+def _cell(cell: TableCell, depth: int) -> TableCell:
+    _check_depth(depth)
+    if not isinstance(cell, TableCell):
+        raise _unknown(cell)
+    return TableCell(_inlines(cell.children, depth + 1))
 
 
 def _item(item: ListItem, depth: int) -> ListItem:

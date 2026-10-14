@@ -10,6 +10,9 @@ from markforge.ast import (
     ListItem,
     Paragraph,
     Strong,
+    Table,
+    TableCell,
+    TableRow,
     Text,
 )
 from markforge.errors import ParserError
@@ -162,6 +165,65 @@ def test_mixed_document() -> None:
         BlockQuote((para("q"),)),
         HorizontalRule(),
     )
+
+
+def cell(*children: Strong | Text) -> TableCell:
+    return TableCell(children)
+
+
+def row(*texts: str) -> TableRow:
+    return TableRow(tuple(cell(Text(value)) if value else cell() for value in texts))
+
+
+def test_table_with_header_rows_and_alignments() -> None:
+    result = doc("a|b|c\n:--|:-:|--:\n1|2|3\n4|5|6")
+    assert result.children == (
+        Table(
+            ("left", "center", "right"),
+            row("a", "b", "c"),
+            (row("1", "2", "3"), row("4", "5", "6")),
+        ),
+    )
+
+
+def test_table_without_alignment_has_none_aligns() -> None:
+    assert doc("a|b\n-|-\n1|2").children == (Table((None, None), row("a", "b"), (row("1", "2"),)),)
+
+
+def test_table_cells_are_parsed_as_inline() -> None:
+    result = doc("a|b\n-|-\n**x**|y")
+    assert result.children == (
+        Table(
+            (None, None), row("a", "b"), (TableRow((cell(Strong((Text("x"),))), cell(Text("y")))),)
+        ),
+    )
+
+
+def test_table_short_row_gets_empty_cells() -> None:
+    assert doc("a|b\n-|-\n1").children == (Table((None, None), row("a", "b"), (row("1", ""),)),)
+
+
+def test_table_header_only_has_no_rows() -> None:
+    assert doc("a|b\n-|-").children == (Table((None, None), row("a", "b"), ()),)
+
+
+def test_table_between_paragraphs() -> None:
+    result = doc("antes\n\na|b\n-|-\n1|2\n\ndespués")
+    assert [type(block) for block in result.children] == [Paragraph, Table, Paragraph]
+
+
+def test_table_inside_a_blockquote() -> None:
+    result = doc("> a|b\n> -|-\n> 1|2")
+    assert result.children == (BlockQuote((Table((None, None), row("a", "b"), (row("1", "2"),)),)),)
+
+
+def test_unknown_alignment_in_a_token_becomes_none() -> None:
+    token = Token(TokenType.TABLE, "", 1, rows=(("a",), ("b",)), aligns=("bogus",))
+    assert parse([token]).children == (Table((None,), row("a"), (row("b"),)),)
+
+
+def test_html_only_lines_do_not_create_blocks() -> None:
+    assert doc('<div align="center">\n\ntexto\n\n</div>').children == (para("texto"),)
 
 
 def test_indented_sublist_is_flattened_for_now() -> None:

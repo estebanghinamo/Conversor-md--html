@@ -55,6 +55,13 @@ FRAGMENTS = [
     "+ ",
     "1. ",
     "---",
+    "|",
+    " | ",
+    "|:--|--:|",
+    "-|-",
+    "\\|",
+    '<div align="center">',
+    "</div>",
     "\n",
     "\n\n",
     " ",
@@ -94,8 +101,16 @@ text_without_cr = any_text.filter(lambda value: "\r" not in value)
 ALLOWED_TAGS = frozenset(
     {"p", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "pre", "code", "ul", "ol", "li"}
     | {"blockquote", "em", "strong", "del", "a", "img"}
+    | {"table", "thead", "tbody", "tr", "th", "td"}
 )
-ALLOWED_ATTRIBUTES = {"a": {"href", "rel"}, "img": {"src", "alt"}, "code": {"class"}}
+ALLOWED_ATTRIBUTES = {
+    "a": {"href", "rel"},
+    "img": {"src", "alt"},
+    "code": {"class"},
+    "th": {"align"},
+    "td": {"align"},
+}
+ALIGN_VALUES = frozenset({"left", "center", "right"})
 LANGUAGE_CLASS = re.compile(r"language-[A-Za-z0-9_+-]{1,32}")
 LANGUAGE_NAME = re.compile(r"[A-Za-z0-9_+-]{1,32}")
 SAFE_SCHEMES = frozenset({"http", "https", "mailto"})
@@ -138,6 +153,8 @@ class SafetyChecker(HTMLParser):
             self.violations.append(f"clase inválida: {value!r}")
         elif name == "rel" and value != "noopener noreferrer":
             self.violations.append(f"rel inválido: {value!r}")
+        elif name == "align" and value not in ALIGN_VALUES:
+            self.violations.append(f"align inválido: {value!r}")
 
     def handle_endtag(self, tag: str) -> None:
         if tag not in ALLOWED_TAGS:
@@ -278,6 +295,38 @@ url_strategy = st.builds(
 def test_links_and_images_never_carry_unsafe_urls(url: str) -> None:
     for source in (f"[t]({url})", f"![t]({url})", f"x [a]({url}) y"):
         assert violations_of(convert(source)) == []
+
+
+pipe_text = st.lists(
+    st.sampled_from(
+        ["|", "\\|", " ", "-", ":", "a", "b", "\n", "<b>", "&", '"', "*", "`", "[x](/u)"]
+    ),
+    max_size=60,
+).map("".join)
+
+
+@given(pipe_text)
+def test_text_with_pipes_never_breaks_or_emits_unescaped_html(text: str) -> None:
+    output = convert(text)
+    assert violations_of(output) == []
+    assert "<b>" not in output
+
+
+@given(
+    st.lists(st.from_regex(r"[a-z]{0,4}", fullmatch=True), min_size=1, max_size=6),
+    st.lists(st.lists(st.from_regex(r"[a-z]{0,4}", fullmatch=True), max_size=8), max_size=5),
+)
+def test_every_table_row_has_as_many_cells_as_the_header(
+    header: list[str], body: list[list[str]]
+) -> None:
+    columns = len(header)
+    lines = ["|" + "|".join(header) + "|", "|" + "|".join(["---"] * columns) + "|"]
+    lines += ["|" + "|".join(cells) + "|" for cells in body]
+    output = convert(chr(10).join(lines))
+    rows = [line for line in output.split(chr(10)) if line.startswith("<tr>")]
+    assert len(rows) == 1 + len(body)
+    for line in rows:
+        assert line.count("</th>") + line.count("</td>") == columns
 
 
 @given(st.text(max_size=60))

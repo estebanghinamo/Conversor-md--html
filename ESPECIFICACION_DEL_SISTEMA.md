@@ -221,7 +221,7 @@ Ejemplos:
 Inicialmente no implementar:
 
 - todo CommonMark;
-- tablas complejas;
+- tablas complejas (celdas combinadas, bloques dentro de celdas); las tablas simples estilo GitHub sí se soportan (ADR-005);
 - extensiones arbitrarias;
 - plugins dinámicos;
 - ejecución de código;
