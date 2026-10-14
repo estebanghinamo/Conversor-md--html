@@ -8,6 +8,10 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+    ignore:
+      # El runtime es Python 3.12 (el CI solo prueba 3.12): subir de version es una decision, no un parche.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
