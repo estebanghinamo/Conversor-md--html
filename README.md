@@ -189,6 +189,7 @@ Toda la especificación del producto está en [`ESPECIFICACION_DEL_SISTEMA.md`](
 ```bash
 markforge input.md                      # HTML por stdout
 markforge input.md --output out.html    # HTML a un archivo
+markforge input.md --standalone -o out.html   # página completa con estilos (--title para el título)
 cat input.md | markforge                # lee de stdin ("-" también)
 markforge --help                        # ayuda y códigos de salida
 ```

@@ -16,6 +16,7 @@ from typing import BinaryIO
 from markforge import convert
 from markforge.errors import MarkdownError
 from markforge.lexer import MAX_INPUT_LENGTH
+from markforge.page import DEFAULT_TITLE, wrap_page
 from markforge.version import __version__
 
 EXIT_OK = 0
@@ -52,6 +53,16 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"archivo Markdown de entrada; sin argumento o con '{STDIN_NAME}' se lee stdin",
     )
     parser.add_argument("-o", "--output", help="archivo HTML de salida (por defecto, stdout)")
+    parser.add_argument(
+        "--standalone",
+        action="store_true",
+        help="envuelve el resultado en una página HTML completa con estilos",
+    )
+    parser.add_argument(
+        "--title",
+        default=DEFAULT_TITLE,
+        help=f"título de la página con --standalone (por defecto '{DEFAULT_TITLE}')",
+    )
     parser.add_argument("--version", action="version", version=f"markforge {__version__}")
     return parser
 
@@ -61,6 +72,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         source = _read_input(args.input)
         html = convert(source)
+        if args.standalone:
+            html = wrap_page(html, _checked_title(args.title))
         _write_output(html, args.output, args.input)
     except _CliError as exc:
         print(f"markforge: error: {exc}", file=sys.stderr)
@@ -69,6 +82,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"markforge: error: {exc}", file=sys.stderr)
         return EXIT_INVALID_INPUT
     return EXIT_OK
+
+
+def _checked_title(title: str) -> str:
+    """Rechaza títulos con bytes inválidos (surrogates de argv) antes de codificar."""
+    try:
+        title.encode("utf-8")
+    except UnicodeEncodeError as exc:
+        msg = "--title no es UTF-8 válido"
+        raise _CliError(msg, EXIT_INVALID_INPUT) from exc
+    return title
 
 
 def _io_message(action: str, name: str, exc: OSError | ValueError) -> str:

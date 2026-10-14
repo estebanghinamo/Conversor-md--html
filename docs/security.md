@@ -42,11 +42,14 @@ Entradas como `javascript&colon;x` pasan el sanitizer porque no tienen esquema: 
 - **Salida:** solo se escribe si la conversión terminó bien, así que un error no toca el archivo de salida. Se sobrescribe en el lugar (no es atómico) y se rechaza que sea el mismo archivo que la entrada, incluso mediante symlinks o hard links.
 - **Mensajes de error:** solo incluyen la ruta que pasó el usuario y el motivo del sistema (o el límite superado); nunca el contenido del input ni trazas.
 - **Códigos de salida:** 0 éxito, 1 input inválido, 2 error de E/S o de uso.
+- **`--standalone`:** `page.py` envuelve el HTML ya renderizado (sin tocar el pipeline). El único dato propio es `--title`, que se escapa; un título con bytes inválidos sale con código 1. La página lleva un CSP por `<meta>` sin scripts (`default-src 'none'`, `base-uri 'none'`, `form-action 'none'`).
 
 ## Riesgos aceptados
 
 | Aviso | Dónde | Decisión |
 |---|---|---|
 | SonarCloud `pythonsecurity:S8707` (Path Traversal) | `cli._write_output()` | Aceptado en Sonar (PRs #8 y #9): `--output` escribe donde indica el usuario, por diseño. Mitigaciones y alternativas descartadas en [ADR-004](adr/004-cli-io-policy.md). |
+| Imágenes remotas en `--standalone` (`img-src http: https:`) | `page._CSP` | Coherente con la lista blanca del sanitizer (`http`, `https`): abrir el HTML puede cargar imágenes externas (tracking, fuga de IP). No es XSS. |
+| El título de `--standalone` no filtra caracteres bidi ni de control | `page.wrap_page()` | El escape HTML es correcto para el contexto de `<title>`; solo habría spoofing visual en la pestaña. |
 | La escritura del archivo de salida no es atómica | `cli._write_output()` | Se escribe en el lugar, solo después de convertir con éxito. Un corte a mitad de escritura (disco lleno, `kill`) puede dejar el archivo incompleto. |
 | Las URLs de links e imágenes se cortan en el primer `)` | `inline.py` | Limitación de corrección, no de seguridad: la URL cortada se valida igual en el sanitizer. |
