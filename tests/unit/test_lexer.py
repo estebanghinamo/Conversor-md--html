@@ -410,8 +410,9 @@ def test_table_column_limit() -> None:
         return "|".join(["a"] * columns) + NEWLINE + "|".join(["-"] * columns)
 
     assert len(table(source(MAX_TABLE_COLUMNS)).aligns) == MAX_TABLE_COLUMNS
+    too_wide = source(MAX_TABLE_COLUMNS + 1)
     with pytest.raises(LexerError, match="columnas"):
-        tokenize(source(MAX_TABLE_COLUMNS + 1))
+        tokenize(too_wide)
 
 
 def test_table_cell_limit_counts_header_and_rows() -> None:

@@ -39,8 +39,9 @@ def test_harness_accepts_inputs(data: bytes) -> None:
 
 def test_harness_accepts_lexer_error() -> None:
     data = b"a" * (MAX_INPUT_LENGTH + 1)
+    text = data.decode()
     with pytest.raises(LexerError):
-        tokenize(data.decode())
+        tokenize(text)
     _load_harness().test_one_input(data)
 
 

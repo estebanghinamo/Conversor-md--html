@@ -321,10 +321,12 @@ def test_row_with_wrong_width_raises(width: int) -> None:
 
 @pytest.mark.parametrize("fake", [object(), "texto", None])
 def test_unknown_table_row_and_cell_raise(fake: object) -> None:
+    bad_row = Table((None,), cast(TableRow, fake), ())
+    bad_cell = Table((None,), row(cast(TableCell, fake)), ())
     with pytest.raises(RenderError, match="nodo desconocido"):
-        html(Table((None,), cast(TableRow, fake), ()))
+        html(bad_row)
     with pytest.raises(RenderError, match="nodo desconocido"):
-        html(Table((None,), row(cast(TableCell, fake)), ()))
+        html(bad_cell)
 
 
 @pytest.mark.parametrize(
