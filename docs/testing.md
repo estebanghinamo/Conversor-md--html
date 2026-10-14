@@ -49,6 +49,18 @@ Además de las propiedades generales, hay propiedades pensadas para matar mutaci
 
 Antes de confiar en una propiedad conviene romper el código a propósito (por ejemplo, quitar el escape del renderer o dejar pasar cualquier esquema en el sanitizer) y comprobar que algún test falla. Si no falla ninguno, la propiedad es demasiado débil. El mutation testing (`mutmut`) automatiza esto.
 
+## Mutation testing (mutmut)
+
+`mutmut` introduce cambios pequeños en `src/markforge/` (mutantes) y ejecuta los tests; si ninguno falla, el mutante *sobrevive* y señala un test débil. No corre en Windows: lo ejecuta [`mutation.yml`](../.github/workflows/mutation.yml) en ubuntu, a mano (*Actions > Mutation testing > Run workflow*) o cada lunes. El job falla si el score baja de 80 %.
+
+Última corrida (14/10/2026): **90,6 %**, con 1.538 mutantes (1.363 muertos, 31 por timeout, 144 sobrevivientes, 0 sospechosos). Los sobrevivientes quedan en el artefacto `survivors.txt` de la corrida.
+
+## Fuzzing (Atheris)
+
+[`tests/fuzz/fuzz_lexer.py`](../tests/fuzz/fuzz_lexer.py) alimenta el lexer con bytes arbitrarios; solo es válido que tokenice o lance `LexerError`, cualquier otra excepción es un bug. Lo ejecuta [`fuzz.yml`](../.github/workflows/fuzz.yml) en ubuntu (Atheris no corre en Windows), a mano o cada lunes, con `-timeout=10` para detectar cuelgues. Un test de humo (`tests/unit/test_fuzz_harness.py`) comprueba el harness sin Atheris.
+
+Primera corrida (14/10/2026, 300 s): más de 1,1 millones de ejecuciones a ~4.000 por segundo, cobertura saturada (154 puntos del lexer) y ningún fallo.
+
 ## Bugs que encontraron los tests de propiedades
 
 - Un info string de un bloque de código con un carácter de control (por ejemplo U+001F) hacía `IndexError` en el lexer, porque `str.split()` también corta en esos caracteres. Corregido en el lexer.

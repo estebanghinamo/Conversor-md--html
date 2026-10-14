@@ -6,6 +6,8 @@
 
 [![CI](https://github.com/estebanghinamo/Conversor-md--html/actions/workflows/ci.yml/badge.svg)](https://github.com/estebanghinamo/Conversor-md--html/actions/workflows/ci.yml)
 [![Security](https://github.com/estebanghinamo/Conversor-md--html/actions/workflows/security.yml/badge.svg)](https://github.com/estebanghinamo/Conversor-md--html/actions/workflows/security.yml)
+[![Mutation](https://github.com/estebanghinamo/Conversor-md--html/actions/workflows/mutation.yml/badge.svg)](https://github.com/estebanghinamo/Conversor-md--html/actions/workflows/mutation.yml)
+[![Fuzzing](https://github.com/estebanghinamo/Conversor-md--html/actions/workflows/fuzz.yml/badge.svg)](https://github.com/estebanghinamo/Conversor-md--html/actions/workflows/fuzz.yml)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=estebanghinamo_Conversor-md--html&metric=alert_status)](https://sonarcloud.io/dashboard?id=estebanghinamo_Conversor-md--html)
 ![Python](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)
 ![Dependencias](https://img.shields.io/badge/dependencias%20en%20runtime-0-brightgreen)
@@ -130,10 +132,12 @@ El escaneo es **lineal** (pilas y búsquedas acotadas, sin regex anidadas): sin 
 
 | 📊 Métrica | Valor |
 |---|---|
-| ✅ Tests | **624** (406 unitarios · 96 de integración · 122 de propiedades) |
+| ✅ Tests | **~790** (550 unitarios · 109 de integración · 131 de propiedades) |
 | 📈 Cobertura (líneas y ramas) | **100 %** (umbral exigido: 90 %) |
-| 🧾 Código fuente | ~1.250 líneas |
-| 🧪 Código de tests | ~2.760 líneas (más del doble que el código) |
+| 🧬 Mutation score (`mutmut`) | **90,6 %** (umbral: 80 %) · 1.538 mutantes: 1.363 muertos, 31 por timeout, 144 sobrevivientes |
+| 🌀 Fuzzing (Atheris, lexer) | **> 1,1 millones** de ejecuciones en 5 min, 0 fallos |
+| 🧾 Código fuente | ~1.600 líneas |
+| 🧪 Código de tests | ~3.600 líneas (más del doble que el código) |
 | 🔬 Tipado | `mypy --strict`, sin `Any` |
 
 **Estrategia en capas:**
@@ -142,7 +146,11 @@ El escaneo es **lineal** (pilas y búsquedas acotadas, sin regex anidadas): sin 
 - 🔹 **Golden tests** — pares `.md` → `.html` revisados a mano, incluidos casos de ataque XSS.
 - 🔹 **Integración end-to-end** — decenas de *payloads* XSS reales recorren todo el pipeline.
 - 🔹 **Property-based testing con Hypothesis** — miles de entradas generadas verifican invariantes: `convert` nunca falla de forma inesperada, el HTML solo usa tags y atributos de una lista cerrada, el escape ocurre exactamente una vez, el resultado es determinista y el sanitizer es idempotente.
+- 🔹 **Mutation testing automatizado (`mutmut`)** — el workflow [`mutation.yml`](.github/workflows/mutation.yml) introduce cambios en el código y comprueba que algún test falla; exige un score ≥ 80 %. Se lanza a mano o cada semana.
+- 🔹 **Fuzzing con Atheris** — el workflow [`fuzz.yml`](.github/workflows/fuzz.yml) alimenta el lexer con entradas aleatorias guiadas por cobertura y exige que solo lance `LexerError`. Se lanza a mano o cada semana.
 - 🔹 **Pruebas de mutación manuales** — rompí el código a propósito (quitar un escape, permitir cualquier esquema, borrar un límite) para comprobar que los tests lo detectan. Decenas de mutaciones probadas: las propiedades finales las detectan, y las que sobrevivían al principio dieron lugar a propiedades más fuertes.
+
+> Los resultados de mutation y fuzzing son de la corrida del 14/10/2026; cada ejecución queda registrada en la pestaña *Actions* (workflows *Mutation testing* y *Fuzzing*), con sus artefactos.
 
 Más detalle en [`docs/testing.md`](docs/testing.md).
 
@@ -266,7 +274,7 @@ uv run pip-audit                            # vulnerabilidades en dependencias
 - [x] CLI y API pública `convert()`
 - [x] Tests unitarios, de integración, *golden* y de propiedades
 - [x] CI con Quality Gate, SAST, secretos y auditoría de dependencias
-- [ ] 🧬 Mutation testing automatizado (`mutmut`, meta ≥ 80 %)
+- [x] 🧬 Mutation testing automatizado (`mutmut`, 90,6 %)
 - [x] 🌀 Fuzzing con Atheris (lexer; workflow semanal)
 - [x] 🐳 Imagen Docker (usuario no-root, Hadolint, Trivy)
 - [x] 📋 SBOM (CycloneDX)
