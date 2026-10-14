@@ -267,7 +267,7 @@ uv run pip-audit                            # vulnerabilidades en dependencias
 - [x] Tests unitarios, de integración, *golden* y de propiedades
 - [x] CI con Quality Gate, SAST, secretos y auditoría de dependencias
 - [ ] 🧬 Mutation testing automatizado (`mutmut`, meta ≥ 80 %)
-- [ ] 🌀 Fuzzing con Atheris
+- [x] 🌀 Fuzzing con Atheris (lexer; workflow semanal)
 - [ ] 🐳 Imagen Docker (usuario no-root, Hadolint, Trivy)
 - [ ] 📋 SBOM (CycloneDX)
 
