@@ -20,7 +20,7 @@ dev = [
     "pytest>=8.2",
     "pytest-benchmark>=5.3.0",
     "pytest-cov>=5.0",
-    "ruff>=0.5",
+    "ruff>=0.17.2",
 ]
 fuzz = [
     "atheris>=3.1.0",
